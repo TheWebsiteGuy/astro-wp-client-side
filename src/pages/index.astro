@@ -3,32 +3,47 @@ import Layout from "../layouts/Layout.astro";
 ---
 
 <Layout title="Dinos!">
-  <section>
-    <h1>List of Dinosaurs</h1>
-    <div id="dinoList"></div> 
-  </section>
+	<section>
+		<h1>List of Dinosaurs</h1>
+		<div id="dinoList"></div>
+	
+		<div id="paginationControls">
+		  <button id="backBtn" disabled>Back</button> 
+		  <span id="pageNumber"></span>
+		  <button id="loadMoreBtn">Next</button> 
+		</div>
+	  </section>
 
   <script is:inline>
-    async function fetchDinos() {
+let currentPage = 1;
+    let totalPages = 1; // Start with the assumption of at least one page
+
+    async function fetchDinos(page = 1) {
       const dinoList = document.getElementById('dinoList');
       dinoList.innerHTML = '<p>Loading dinosaurs...</p>'; // Loading indicator
 
       try {
-        const res = await fetch("https://norian.studio/wp-json/wp/v2/dinos?&_embed");
-
+        const res = await fetch(`https://norian.studio/wp-json/wp/v2/dinos?&_embed&per_page=5&page=${page}`);
+        
         if (!res.ok) {
           throw new Error(`Failed to fetch: ${res.status}`);
         }
 
         const posts = await res.json();
+        totalPages = res.headers.get('X-WP-TotalPages');
 
+        updatePaginationControls(); // Update buttons and page number
         dinoList.innerHTML = ""; // Clear loading indicator
+
+        if (posts.length === 0) {
+          return;
+        }
 
         posts.forEach(post => {
           const article = document.createElement('article');
           article.innerHTML = `
             <img src="${post._embedded['wp:featuredmedia']['0'].media_details.sizes.medium.source_url}" />
-            <h2><a href="/dinos/${post.slug}/">${post.title.rendered}</a></h2>
+            <h2><a href="/dinos/${post.slug}/" data-astro-prefetch>${post.title.rendered}</a></h2>
             ${post.content.rendered}
           `;
           dinoList.appendChild(article);
@@ -38,7 +53,22 @@ import Layout from "../layouts/Layout.astro";
         dinoList.innerHTML = '<p>Sorry, an error occurred while loading the dinosaurs.</p>';
       }
     }
+	function updatePaginationControls(){
+      document.getElementById('pageNumber').textContent = `Page ${currentPage} of ${totalPages}`;
+      document.getElementById('backBtn').disabled = currentPage === 1;
+      document.getElementById('loadMoreBtn').disabled = currentPage === parseInt(totalPages);
+    }
 
-    fetchDinos(); // Call the function on page load
+    document.getElementById('loadMoreBtn').addEventListener('click', () => {
+      currentPage++;
+      fetchDinos(currentPage);
+    });
+
+    document.getElementById('backBtn').addEventListener('click', () => {
+      currentPage--;
+      fetchDinos(currentPage);
+    });
+    
+    fetchDinos(); // Initial fetch on page load
   </script>
 </Layout>
