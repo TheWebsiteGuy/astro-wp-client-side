@@ -1,2 +1,3 @@
 # astro-wp-client-side
-Astro demo of Dino example using client-side script
+Astro demo of the Dino example using client-side script
+
